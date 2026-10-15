@@ -4,7 +4,12 @@ bsTimer is an iOS app that runs csTimer from `https://cstimer.gnuyen.org` in a
 `WKWebView` and gives it the Web Bluetooth support iOS Safari lacks.
 `bluetooth-shim.js` provides `navigator.bluetooth` inside the page and forwards
 every call to CoreBluetooth (`BluetoothBridge.swift`). csTimer itself is
-unmodified. See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+unmodified apart from one small script on the server (see *Server setup*). See
+[PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+
+bsTimer is an unofficial wrapper. csTimer is written by
+[cs0x7f](https://github.com/cs0x7f/cstimer) and licensed under GPL-3.0; this repository
+contains none of its code, only the app that loads it.
 
 The app also keeps the screen awake while a timer is in inspection, ready or running,
 and lets it auto-lock normally when the timer is idle.
@@ -24,9 +29,28 @@ folder names, the `cstimerBLE` bridge, the `cstimerbt://` sign-in callback) are 
 | `CstimerApp/BluetoothBridge.swift` | CoreBluetooth side of the bridge |
 | `CstimerApp/DevicePickerViewController.swift` | Native device chooser for `requestDevice()` |
 | `CstimerApp/WebViewController.swift` | Web view, navigation policy, JS alert/confirm/prompt |
+| `CstimerApp/DownloadHandler.swift` | Saves exports and offers them through the share sheet |
 | `CstimerApp/AppDelegate.swift` | App and scene delegates |
+| `CstimerApp/Assets.xcassets` | App icon |
+| `server/app-auth.js` | Server-side helper that hands Google sign-in back to the app |
+| `scripts/mac-build.sh` | Builds on a remote Mac over SSH |
+| `scripts/make-icon.swift` | Renders the app icon |
 | `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed) |
 | `test/shim.test.js` | Node tests for the shim |
+
+## Server setup
+
+Google sign-in runs in an `ASWebAuthenticationSession` and returns to the csTimer page
+with the token in the URL fragment. To get it back into the app, copy
+`server/app-auth.js` to the server's `js/` folder and load it first in `index.php`'s
+`<head>`:
+
+```html
+<script src="js/app-auth.js"></script>
+```
+
+It only acts when the URL carries `state=cstimer-ios`, which only the app adds, so
+browsers and the home-screen web app are unaffected. WCA sign-in needs nothing extra.
 
 ## Build and run (on a Mac)
 

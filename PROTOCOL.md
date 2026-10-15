@@ -25,7 +25,7 @@ Promise (native side is a `WKScriptMessageHandlerWithReply`).
 
 | op | args | resolves with |
 |----|------|---------------|
-| `getAvailability` | – | `true` if Bluetooth is powered on, else `false` (waits for CoreBluetooth to leave `.unknown`/`.resetting`, max 3 s) |
+| `getAvailability` | – | `true` if Bluetooth is powered on, else `false` (waits for CoreBluetooth to leave `.unknown`/`.resetting`: up to 120 s while the permission prompt may be showing, otherwise 3 s) |
 | `requestDevice` | `filters: [{namePrefix?, name?, services?: [uuid]}]`, `acceptAllDevices: bool` | `{deviceId, name}`; shows the native picker; rejects `NotFoundError` on cancel |
 | `connect` | `deviceId` | `null` once connected (10 s timeout → `NetworkError`) |
 | `disconnect` | `deviceId` | `null` |

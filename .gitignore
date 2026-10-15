@@ -4,3 +4,7 @@ DerivedData/
 build/
 .DS_Store
 CstimerApp/Info.plist
+
+# Private notes, never committed
+notes/
+*.local.md
