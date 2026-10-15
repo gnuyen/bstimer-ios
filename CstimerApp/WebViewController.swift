@@ -4,7 +4,7 @@ import UIKit
 import WebKit
 
 /// Bumped with every change to the app so the launch badge shows which revision is installed.
-let appRevision = 16
+let appRevision = 17
 
 final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
@@ -45,6 +45,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             config.websiteDataStore.proxyConfigurations = [ProxyConfiguration(httpCONNECTProxy: deadEnd)]
         }
         #endif
+        // Lets the page tell which app build is running (bsTimer's appupdate.js reads this).
+        config.applicationNameForUserAgent = "Mobile/15E148 bsTimer/\(appRevision)"
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         
@@ -352,7 +354,7 @@ extension WebViewController {
             label.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
         ])
         NSLog("[version] %@", label.text ?? "")
-        UIView.animate(withDuration: 0.6, delay: 6, options: []) {
+        UIView.animate(withDuration: 0.4, delay: 1.5, options: []) {
             label.alpha = 0
         } completion: { _ in
             label.removeFromSuperview()

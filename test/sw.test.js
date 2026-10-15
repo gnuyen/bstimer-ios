@@ -247,6 +247,9 @@ test('assets are served from cache and revalidated in the background', async () 
 	assert.equal(await response.text(), 'kernel v1');
 	await Promise.all(waits);
 	assert.equal(await cached(sw, SCOPE + 'js/kernel.js?v=2'), 'kernel v2');
+	// Revalidate with the server, not the browser's HTTP cache (the site sends long max-age).
+	const call = sw.fetchCalls.find((c) => c.url === SCOPE + 'js/kernel.js?v=2');
+	assert.equal(call.init && call.init.cache, 'no-cache');
 });
 
 test('uncached assets come from the network and are stored', async () => {

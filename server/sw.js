@@ -155,7 +155,7 @@ function navigate(event) {
 
 function asset(event) {
 	return caches.open(CACHE).then(c => c.match(event.request).then(hit => {
-		const network = fetch(event.request).then(res => {
+		const network = fetch(event.request, { cache: 'no-cache' }).then(res => {
 			if (cacheable(res)) {
 				return c.put(event.request, res.clone()).then(() => res);
 			}
