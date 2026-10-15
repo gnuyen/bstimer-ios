@@ -32,6 +32,12 @@ targets:
         CFBundleVersion: "1"
         NSBluetoothAlwaysUsageDescription: bsTimer uses Bluetooth to connect to smart cubes and timers.
         UILaunchScreen: {}
+        # Service workers (offline support) only run in WKWebView on app-bound domains.
+        # The WCA hosts are listed so in-app sign-in keeps working if navigation is limited to these.
+        WKAppBoundDomains:
+          - cstimer.gnuyen.org
+          - www.worldcubeassociation.org
+          - worldcubeassociation.org
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations:

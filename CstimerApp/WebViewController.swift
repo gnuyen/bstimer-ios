@@ -1,9 +1,10 @@
 import AuthenticationServices
+import Network
 import UIKit
 import WebKit
 
 /// Bumped with every change to the app so the launch badge shows which revision is installed.
-let appRevision = 15
+let appRevision = 16
 
 final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
@@ -32,6 +33,18 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+        // Info.plist lists WKAppBoundDomains so the page's service worker (offline support) can
+        // run. With that key present WebKit only injects scripts into app-bound pages, and it
+        // only treats pages as app-bound when navigation is limited to those domains.
+        config.limitsNavigationsToAppBoundDomains = true
+        #if DEBUG
+        // `-testOffline` (debug only): route the web view through a proxy that doesn't exist,
+        // so every request fails as if the device were offline.
+        if ProcessInfo.processInfo.arguments.contains("-testOffline") {
+            let deadEnd = NWEndpoint.hostPort(host: "127.0.0.1", port: 9)
+            config.websiteDataStore.proxyConfigurations = [ProxyConfiguration(httpCONNECTProxy: deadEnd)]
+        }
+        #endif
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         

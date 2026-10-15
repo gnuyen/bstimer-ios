@@ -33,10 +33,11 @@ folder names, the `cstimerBLE` bridge, the `cstimerbt://` sign-in callback) are 
 | `CstimerApp/AppDelegate.swift` | App and scene delegates |
 | `CstimerApp/Assets.xcassets` | App icon |
 | `server/app-auth.js` | Server-side helper that hands Google sign-in back to the app |
+| `server/sw.js` | Service worker for offline use, deployed as the site's `sw.js` |
 | `scripts/mac-build.sh` | Builds on a remote Mac over SSH |
 | `scripts/make-icon.swift` | Renders the app icon |
 | `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed) |
-| `test/shim.test.js` | Node tests for the shim |
+| `test/*.test.js` | Node tests for the shim and the service worker |
 
 ## Server setup
 
@@ -51,6 +52,13 @@ with the token in the URL fragment. To get it back into the app, copy
 
 It only acts when the URL carries `state=cstimer-ios`, which only the app adds, so
 browsers and the home-screen web app are unaffected. WCA sign-in needs nothing extra.
+
+For offline use, replace csTimer's placeholder `sw.js` at the site root with
+`server/sw.js`. csTimer already registers it. After one online launch the page and its
+scripts are cached, so the app (and the home-screen web app) opens without a
+connection. The page is fetched fresh when online; scripts are refreshed in the
+background, so a deploy shows up on the second launch. The app lists the site under
+`WKAppBoundDomains`, which WKWebView requires before it runs service workers.
 
 ## Build and run (on a Mac)
 
