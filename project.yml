@@ -1,0 +1,49 @@
+# Generate the Xcode project with: xcodegen generate
+name: CstimerBT
+options:
+  bundleIdPrefix: org.gnuyen
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  CstimerBT:
+    type: application
+    platform: iOS
+    sources:
+      - path: CstimerApp
+        excludes:
+          - "Resources/**"
+      - path: CstimerApp/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.gnuyen.cstimer
+        PRODUCT_NAME: bsTimer
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        # Set your team in Xcode (Signing & Capabilities) or here.
+        DEVELOPMENT_TEAM: ""
+    info:
+      path: CstimerApp/Info.plist
+      properties:
+        CFBundleDisplayName: bsTimer
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSBluetoothAlwaysUsageDescription: bsTimer uses Bluetooth to connect to smart cubes and timers.
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
