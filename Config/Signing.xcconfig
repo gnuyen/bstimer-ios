@@ -1,0 +1,5 @@
+// Signing settings. Put your own Apple team here without committing it:
+// create Config/Local.xcconfig (ignored by git) containing
+//   DEVELOPMENT_TEAM = <your 10-character Team ID>
+// Then run `xcodegen generate`. Without it, pick a team in Xcode's Signing & Capabilities.
+#include? "Local.xcconfig"

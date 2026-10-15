@@ -8,3 +8,6 @@ CstimerApp/Info.plist
 # Private notes, never committed
 notes/
 *.local.md
+
+# Per-developer signing team
+Config/Local.xcconfig
