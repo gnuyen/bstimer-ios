@@ -277,6 +277,45 @@ test('keeps the screen awake only while the cstimer timer is not idle', () => {
 	assert.deepEqual(awake(), [true, false, true]);
 });
 
+// A stand-in for cstimer's GiikerCube: the cube drivers call GiikerCube.callback for every state report.
+function withCube() {
+	let t = 0;
+	const seen = [];
+	const env = load({}, { Date: { now: () => t } });
+	env.win.GiikerCube = { callback() { seen.push(Array.from(arguments)); return 'ret'; } };
+	env.win.dispatchEvent(new Event('DOMContentLoaded'));
+	env.at = (ms) => { t = ms; };
+	env.turns = () => env.calls.filter((c) => c.op === 'userActivity').length;
+	env.seen = seen;
+	return env;
+}
+
+test('cube turns count as activity for the screen sleep timer', () => {
+	const env = withCube();
+	const r = env.win.GiikerCube.callback('UUU', [["R'", 1]], [1, 2], 'GAN');
+	assert.equal(r, 'ret');
+	assert.equal(env.seen.length, 1, 'cstimer still gets the move');
+	assert.deepEqual(env.seen[0][1], [["R'", 1]]);
+	assert.equal(env.turns(), 1);
+});
+
+test('state reports without a turn (connecting, gyro-only) are not activity', () => {
+	const env = withCube();
+	env.win.GiikerCube.callback('UUU', [], [null, 2], 'GAN');
+	assert.equal(env.seen.length, 1);
+	assert.equal(env.turns(), 0);
+});
+
+test('turn activity is sent at most once every few seconds', () => {
+	const env = withCube();
+	const turn = () => env.win.GiikerCube.callback('UUU', [['R', 1]], [1, 2], 'GAN');
+	env.at(1000); turn(); turn();
+	env.at(3000); turn();
+	env.at(6500); turn();
+	assert.equal(env.seen.length, 4);
+	assert.equal(env.turns(), 2);
+});
+
 test('missing cstimer kernel does not break the shim', () => {
 	const { win, bt } = load();
 	win.dispatchEvent(new Event('DOMContentLoaded'));

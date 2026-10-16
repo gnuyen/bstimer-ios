@@ -1,6 +1,7 @@
 import Foundation
 
 /// Which csTimer the app shows, chosen in the iOS Settings app (Settings.bundle, key "site").
+/// csTimer.net is the default, since that is where most people's solves already are.
 /// The two sites are different origins, so each keeps its own solves on the device.
 enum SiteMode: String {
     /// cstimer.gnuyen.org: csTimer with bsTimer's additions, including iCloud sync.
@@ -12,7 +13,7 @@ enum SiteMode: String {
     static let defaultsKey = "site"
 
     static var current: SiteMode {
-        SiteMode(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .bstimer
+        SiteMode(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .cstimer
     }
 
     var startURL: URL {

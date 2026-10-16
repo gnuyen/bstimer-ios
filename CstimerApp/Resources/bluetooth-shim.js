@@ -417,4 +417,25 @@
 			}
 		});
 	});
+
+	// Turning a smart cube's faces (while scrambling, say) counts as using the phone, so
+	// tell the app to restart its screen sleep countdown. The cube drivers report every
+	// state through GiikerCube.callback; only reports with moves are turns, so gyro
+	// updates and connection reports don't count.
+	window.addEventListener('DOMContentLoaded', function () {
+		var cube = window.GiikerCube;
+		if (!cube || typeof cube.callback !== 'function') {
+			return;
+		}
+		var inner = cube.callback;
+		var last = -Infinity;
+		cube.callback = function (facelet, prevMoves) {
+			var now = Date.now();
+			if (prevMoves && prevMoves.length > 0 && now - last >= 5000) {
+				last = now;
+				call('userActivity', {}).catch(function () {});
+			}
+			return inner.apply(this, arguments);
+		};
+	});
 })();

@@ -41,6 +41,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     private var readWaiters: [String: [Reply]] = [:]
     private var writeWaiters: [String: [Reply]] = [:]
     private var notifyWaiters: [String: [Reply]] = [:]
+    /// The page asked to keep the screen on (a timer is in use).
+    private var keepAwake = false
 
     // MARK: - Init
 
@@ -187,10 +189,25 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
         case "unwatchAdvertisements":
             handleUnwatchAdvertisements(body, replyHandler)
         case "setKeepAwake":
-            UIApplication.shared.isIdleTimerDisabled = (body["on"] as? Bool) ?? false
+            keepAwake = (body["on"] as? Bool) ?? false
+            UIApplication.shared.isIdleTimerDisabled = keepAwake
+            resolve(replyHandler)
+        case "userActivity":
+            restartIdleTimer()
             resolve(replyHandler)
         default:
             reject(replyHandler, "NotSupportedError", "Unknown op \(op)")
+        }
+    }
+
+    /// Turning the cube's faces doesn't touch the screen, so iOS would let it sleep mid-scramble.
+    /// Switching the idle timer off and back on restarts its countdown.
+    private func restartIdleTimer() {
+        guard !keepAwake else { return }
+        UIApplication.shared.isIdleTimerDisabled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, !self.keepAwake else { return }
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
 
@@ -807,6 +824,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     // MARK: - Reset
 
     func reset() {
+        keepAwake = false
         UIApplication.shared.isIdleTimerDisabled = false
         if picker != nil {
             picker?.dismissSilently()

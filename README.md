@@ -1,23 +1,24 @@
 # bsTimer for iOS
 
-bsTimer is an iOS app that runs csTimer from `https://cstimer.gnuyen.org` in a
-`WKWebView` and gives it the Web Bluetooth support iOS Safari lacks.
-`bluetooth-shim.js` provides `navigator.bluetooth` inside the page and forwards
-every call to CoreBluetooth (`BluetoothBridge.swift`). The site runs
-[bsTimer](https://github.com/gnuyen/bstimer), a lightly modified csTimer (see *The
-website*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+bsTimer is an iOS app that runs csTimer in a `WKWebView` and gives it the Web
+Bluetooth support iOS Safari lacks. `bluetooth-shim.js` provides `navigator.bluetooth`
+inside the page and forwards every call to CoreBluetooth (`BluetoothBridge.swift`).
+It loads `https://cstimer.net` by default, or `https://cstimer.gnuyen.org`, which runs
+[bsTimer](https://github.com/gnuyen/bstimer), a lightly modified csTimer with iCloud
+sync (see *Website choice* and *The website*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
 
 bsTimer is an unofficial wrapper. csTimer is written by
 [cs0x7f](https://github.com/cs0x7f/cstimer) and licensed under GPL-3.0; this repository
 contains none of its code, only the app that loads it.
 
 The app also keeps the screen awake while a timer is in inspection, ready or running,
-and lets it auto-lock normally when the timer is idle.
+and lets it auto-lock normally when the timer is idle. Turning a smart cube's faces
+(while scrambling, say) restarts the auto-lock countdown; tilting it does not.
 
 ## Website choice
 
-The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: bsTimer
-(default, `https://cstimer.gnuyen.org`) or csTimer.net. The two sites keep separate
+The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: csTimer.net
+(default, where people's existing solves are) or bsTimer (`https://cstimer.gnuyen.org`). The two sites keep separate
 solves on the device. Bluetooth and the screen lock work on both. iCloud sync is
 bsTimer only. Google sign-in does not work in the app on csTimer.net (its login
 returns to csTimer.net in the system sign-in sheet); use WCA sign-in there. The
