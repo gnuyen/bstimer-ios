@@ -72,6 +72,8 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             handleSetCode(body, replyHandler)
         case "appleSignIn":
             handleAppleSignIn(replyHandler)
+        case "deleteAll":
+            handleDeleteAll(replyHandler)
         default:
             reject(replyHandler, "unknown op")
         }
@@ -218,6 +220,27 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
         }
     }
 
+    /// Deletes the synced data from iCloud and the server code (the user deleted their data).
+    private func handleDeleteAll(_ r: @escaping (Any?, String?) -> Void) {
+        Task { @MainActor in
+            do {
+                _ = try await database.deleteRecord(withID: recordID)
+            } catch let ckError as CKError where ckError.code == .unknownItem {
+                // nothing stored
+            } catch {
+                reject(r, "iCloud: " + error.localizedDescription)
+                return
+            }
+            lastRecord = nil
+            kvs.removeObject(forKey: codeKey)
+            kvs.synchronize()
+            #if DEBUG
+            NSLog("[cloud] op deleteAll -> ok")
+            #endif
+            resolve(r, true)
+        }
+    }
+
     private func handleSetCode(_ body: [String: Any], _ r: @escaping (Any?, String?) -> Void) {
         let code = body["code"] as? String
         if let code = code, !code.isEmpty {
@@ -289,7 +312,12 @@ extension CloudBridge: ASAuthorizationControllerDelegate, ASAuthorizationControl
         #if DEBUG
         NSLog("[cloud] op appleSignIn -> ok")
         #endif
-        resolve(r, ["token": token])
+        // The authorization code lets the server revoke this sign-in when the user deletes their data.
+        var reply: [String: Any] = ["token": token]
+        if let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) {
+            reply["code"] = code
+        }
+        resolve(r, reply)
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {

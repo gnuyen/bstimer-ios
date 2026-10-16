@@ -37,12 +37,16 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
+        # The build number; the app's revision badge (r23 …) shows the same number.
+        CURRENT_PROJECT_VERSION: "23"
     info:
       path: CstimerApp/Info.plist
       properties:
         CFBundleDisplayName: bsTimer
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "1"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Only standard HTTPS/TLS from the system, so no export compliance paperwork.
+        ITSAppUsesNonExemptEncryption: false
         NSBluetoothAlwaysUsageDescription: bsTimer uses Bluetooth to connect to smart cubes and timers.
         UILaunchScreen: {}
         # Service workers (offline support) only run in WKWebView on app-bound domains.

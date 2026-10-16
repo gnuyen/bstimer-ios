@@ -1,6 +1,6 @@
-// Renders the 1024×1024 bsTimer app icon in the style of the csTimer logo.
+// Renders the 1024×1024 bsTimer app icon: a stopwatch whose face is a scrambled cube face.
 // Usage (on a Mac): swift scripts/make-icon.swift CstimerApp/Assets.xcassets/AppIcon.appiconset/icon-1024.png
-import AppKit
+import Foundation
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
@@ -20,49 +20,114 @@ let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, b
 ctx.translateBy(x: 0, y: CGFloat(size))
 ctx.scaleBy(x: 1, y: -1)
 
-ctx.setFillColor(rgb(0xc4ec84))
-ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
+// 1. Background vertical gradient.
+let gradientColors = [rgb(0x22304d), rgb(0x121a2b)] as CFArray
+let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!, colors: gradientColors, locations: [0, 1])!
+ctx.drawLinearGradient(gradient, start: CGPoint(x: 512, y: 0), end: CGPoint(x: 512, y: 1024), options: [])
 
-let gap: CGFloat = 16
-let cell = (CGFloat(size) - gap * 4) / 3
-let radius: CGFloat = 26
-
-func roundedRect(_ rect: CGRect, _ color: CGColor) {
-    let path = CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+func fillCircle(center: CGPoint, radius: CGFloat, color: CGColor) {
+    let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+    let path = CGPath(ellipseIn: rect, transform: nil)
     ctx.addPath(path)
     ctx.setFillColor(color)
     ctx.fillPath()
+}
+
+func strokeCircle(center: CGPoint, radius: CGFloat, color: CGColor, width: CGFloat) {
+    let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+    let path = CGPath(ellipseIn: rect, transform: nil)
     ctx.addPath(path)
-    ctx.setStrokeColor(rgb(0xc8b89a))
-    ctx.setLineWidth(4)
+    ctx.setStrokeColor(color)
+    ctx.setLineWidth(width)
     ctx.strokePath()
 }
 
-let top: [UInt32] = [0xff0000, 0xffff00, 0x00ffff]
-let bottom: [UInt32] = [0x00ff00, 0xf0f8d0, 0xff8000]
-for (i, c) in top.enumerated() {
-    roundedRect(CGRect(x: gap + CGFloat(i) * (cell + gap), y: gap, width: cell, height: cell), rgb(c))
+func fillRoundedRect(_ rect: CGRect, cornerRadius: CGFloat, color: CGColor) {
+    let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+    ctx.addPath(path)
+    ctx.setFillColor(color)
+    ctx.fillPath()
 }
-for (i, c) in bottom.enumerated() {
-    roundedRect(CGRect(x: gap + CGFloat(i) * (cell + gap), y: gap * 3 + cell * 2, width: cell, height: cell), rgb(c))
+
+func strokeRoundedRect(_ rect: CGRect, cornerRadius: CGFloat, color: CGColor, width: CGFloat) {
+    let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+    ctx.addPath(path)
+    ctx.setStrokeColor(color)
+    ctx.setLineWidth(width)
+    ctx.strokePath()
 }
-let band = CGRect(x: gap, y: gap * 2 + cell, width: CGFloat(size) - gap * 2, height: cell)
-roundedRect(band, rgb(0x000000))
 
-// Title, scaled to fill most of the band's width.
-let title = "bsTimer" as NSString
-let fontName = NSFont(name: "HelveticaNeue-CondensedBlack", size: 100) != nil ? "HelveticaNeue-CondensedBlack" : "Helvetica-Bold"
-var font = NSFont(name: fontName, size: 100)!
-let width = title.size(withAttributes: [.font: font]).width
-font = NSFont(name: fontName, size: 100 * (band.width * 0.86) / width)!
-let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
-let textSize = title.size(withAttributes: attrs)
+// 3. Crown (drawn before the body so the circle overlaps its bottom edge).
+let crownRect = CGRect(x: 452, y: 120, width: 120, height: 80)
+fillRoundedRect(crownRect, cornerRadius: 18, color: rgb(0xf4f1e8))
+strokeRoundedRect(crownRect, cornerRadius: 18, color: rgb(0xffffff), width: 16)
 
-let gc = NSGraphicsContext(cgContext: ctx, flipped: true)
-NSGraphicsContext.saveGraphicsState()
-NSGraphicsContext.current = gc
-title.draw(at: NSPoint(x: band.midX - textSize.width / 2, y: band.midY - textSize.height / 2), withAttributes: attrs)
-NSGraphicsContext.restoreGraphicsState()
+// Small stem.
+let stemRect = CGRect(x: 487, y: 190, width: 50, height: 25)
+fillRoundedRect(stemRect, cornerRadius: 0, color: rgb(0xf4f1e8))
+
+// 4. Two side buttons (drawn before the body circle).
+func drawSideButton(angle: CGFloat) {
+    ctx.saveGState()
+    ctx.translateBy(x: 512, y: 560)
+    ctx.rotate(by: angle)
+    let rect = CGRect(x: -35, y: -(360 + 30) - 23, width: 70, height: 46)
+    fillRoundedRect(rect, cornerRadius: 14, color: rgb(0xf4f1e8))
+    strokeRoundedRect(rect, cornerRadius: 14, color: rgb(0xffffff), width: 12)
+    ctx.restoreGState()
+}
+drawSideButton(angle: -45 * .pi / 180)
+drawSideButton(angle: 45 * .pi / 180)
+
+// 2. Stopwatch body.
+let bodyCenter = CGPoint(x: 512, y: 560)
+let bodyRadius: CGFloat = 360
+fillCircle(center: bodyCenter, radius: bodyRadius, color: rgb(0xf4f1e8))
+strokeCircle(center: bodyCenter, radius: bodyRadius, color: rgb(0xffffff), width: 28)
+
+// 5. Cube face inside the stopwatch.
+let backingSide: CGFloat = 440
+let backingRect = CGRect(x: 512 - backingSide / 2, y: 560 - backingSide / 2, width: backingSide, height: backingSide)
+fillRoundedRect(backingRect, cornerRadius: 48, color: rgb(0x111111))
+
+let gap: CGFloat = 14
+let stickerSide = (backingSide - 4 * gap) / 3
+let stickerRadius: CGFloat = 22
+let stickers: [[UInt32]] = [
+    [0xffffff, 0xff5a36, 0x2f7df6],
+    [0xffd500, 0x1fbf5b, 0xffffff],
+    [0xff8a00, 0xffd500, 0xff5a36]
+]
+for (row, rowColors) in stickers.enumerated() {
+    for (col, color) in rowColors.enumerated() {
+        let x = backingRect.minX + gap + CGFloat(col) * (stickerSide + gap)
+        let y = backingRect.minY + gap + CGFloat(row) * (stickerSide + gap)
+        let rect = CGRect(x: x, y: y, width: stickerSide, height: stickerSide)
+        fillRoundedRect(rect, cornerRadius: stickerRadius, color: rgb(color))
+    }
+}
+
+// 6. Timer hand.
+let handAngle: CGFloat = 30 * .pi / 180
+let handRadius: CGFloat = 250
+let handEnd = CGPoint(x: 512 + handRadius * sin(handAngle), y: 560 - handRadius * cos(handAngle))
+
+ctx.setLineCap(.round)
+ctx.setStrokeColor(rgb(0x111111))
+ctx.setLineWidth(22)
+ctx.move(to: bodyCenter)
+ctx.addLine(to: handEnd)
+ctx.strokePath()
+
+ctx.setStrokeColor(rgb(0xffffff))
+ctx.setLineWidth(10)
+ctx.move(to: bodyCenter)
+ctx.addLine(to: handEnd)
+ctx.strokePath()
+
+// Centre dot.
+fillCircle(center: bodyCenter, radius: 26, color: rgb(0x111111))
+fillCircle(center: bodyCenter, radius: 12, color: rgb(0xffffff))
 
 let image = ctx.makeImage()!
 let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: outPath) as CFURL, UTType.png.identifier as CFString, 1, nil)!

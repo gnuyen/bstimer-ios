@@ -3,8 +3,9 @@ import Network
 import UIKit
 import WebKit
 
-/// Bumped with every change to the app so the launch badge shows which revision is installed.
-let appRevision = 22
+/// The build number (CURRENT_PROJECT_VERSION in project.yml), bumped with every change to the app
+/// so the launch badge shows which revision is installed.
+let appRevision = Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") ?? 0
 
 final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
@@ -16,8 +17,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     /// (Google is not listed: it refuses sign-in inside embedded web views, see startGoogleSignIn.)
     private let inAppLoginHosts: Set<String> = ["www.worldcubeassociation.org", "worldcubeassociation.org"]
 
-    /// Google sign-in runs in a system auth session. The server's app-auth.js forwards the
-    /// token to this scheme when it sees `state=cstimer-ios`, which only the app adds.
+    /// Google sign-in runs in a system auth session. The app appends `.cstimer-ios` to the page's
+    /// own `state`; the site's app-auth.js forwards the token to this scheme when it sees that
+    /// marker, and the app removes it again so the page can check its state.
     private let authCallbackScheme = "cstimerbt"
     private let authState = "cstimer-ios"
     private var authSession: ASWebAuthenticationSession?
@@ -405,8 +407,10 @@ private final class PaddedLabel: UILabel {
 extension WebViewController: ASWebAuthenticationPresentationContextProviding {
     private func startGoogleSignIn(_ url: URL, ephemeral: Bool = false) {
         guard authSession == nil, var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-        var items = (comps.queryItems ?? []).filter { $0.name != "state" }
-        items.append(URLQueryItem(name: "state", value: authState))
+        var items = comps.queryItems ?? []
+        let pageState = items.first(where: { $0.name == "state" })?.value ?? ""
+        items.removeAll { $0.name == "state" }
+        items.append(URLQueryItem(name: "state", value: pageState.isEmpty ? authState : "\(pageState).\(authState)"))
         comps.queryItems = items
         guard let authURL = comps.url else { return }
 
@@ -423,9 +427,11 @@ extension WebViewController: ASWebAuthenticationPresentationContextProviding {
             // cstimer finishes the Google login when the page *loads* with #access_token=...
             // Loading the same page with only a new fragment is an in-page jump, not a load,
             // so set the URL and then force a reload.
-            // Drop our state marker, or app-auth.js would forward this load to the callback again.
+            // Drop our state marker, or app-auth.js would forward this load to the callback again;
+            // the page's own state stays for it to check.
             target.fragment = fragment.split(separator: "&")
                 .filter { $0 != "state=\(self.authState)" }
+                .map { $0.hasPrefix("state=") && $0.hasSuffix(".\(self.authState)") ? $0.dropLast(self.authState.count + 1) : $0 }
                 .joined(separator: "&")
             guard let targetURL = target.url,
                   let data = try? JSONSerialization.data(withJSONObject: [targetURL.absoluteString]),
