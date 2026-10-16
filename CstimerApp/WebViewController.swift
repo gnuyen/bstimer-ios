@@ -236,7 +236,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         }
         if ProcessInfo.processInfo.arguments.contains("-testAuthRedirect"), !didRunAuthTest {
             didRunAuthTest = true
-            startGoogleSignIn(URL(string: "https://cstimer.gnuyen.org/?t=1#access_token=TEST&state=cstimer-ios")!, ephemeral: true)
+            startGoogleSignIn(URL(string: "https://bstimer.manoagames.com/?t=1#access_token=TEST&state=cstimer-ios")!, ephemeral: true)
         }
     }
     #endif

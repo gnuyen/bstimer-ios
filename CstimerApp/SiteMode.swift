@@ -3,7 +3,7 @@ import Foundation
 /// Which csTimer the app shows, chosen in the iOS Settings app (Settings.bundle, key "site").
 /// The two sites are different origins, so each keeps its own solves on the device.
 enum SiteMode: String {
-    /// cstimer.gnuyen.org: csTimer with bsTimer's additions, including iCloud sync.
+    /// bstimer.manoagames.com: csTimer with bsTimer's additions, including iCloud sync.
     case bstimer
     /// cstimer.net: the original csTimer, with its own sign-in and backups. Bluetooth and the
     /// screen lock still work; bsTimer sync is not offered there.
@@ -17,7 +17,7 @@ enum SiteMode: String {
 
     var startURL: URL {
         switch self {
-        case .bstimer: return URL(string: "https://cstimer.gnuyen.org/")!
+        case .bstimer: return URL(string: "https://bstimer.manoagames.com/")!
         case .cstimer: return URL(string: "https://cstimer.net/")!
         }
     }
@@ -25,7 +25,7 @@ enum SiteMode: String {
     /// Hosts the page may run on; the native bridges only answer pages from these.
     var hosts: Set<String> {
         switch self {
-        case .bstimer: return ["cstimer.gnuyen.org"]
+        case .bstimer: return ["bstimer.manoagames.com"]
         case .cstimer: return ["cstimer.net", "www.cstimer.net"]
         }
     }

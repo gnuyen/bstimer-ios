@@ -1,6 +1,6 @@
 # JS ⇄ native Bluetooth bridge protocol
 
-The app injects `bluetooth-shim.js` into `https://cstimer.gnuyen.org` at document
+The app injects `bluetooth-shim.js` into `https://bstimer.manoagames.com` at document
 start. The shim implements the subset of Web Bluetooth that cstimer uses and
 forwards every call to Swift (`BluetoothBridge`).
 
