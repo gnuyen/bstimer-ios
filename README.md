@@ -3,9 +3,9 @@
 bsTimer is an iOS app that runs csTimer in a `WKWebView` and gives it the Web
 Bluetooth support iOS Safari lacks. `bluetooth-shim.js` provides `navigator.bluetooth`
 inside the page and forwards every call to CoreBluetooth (`BluetoothBridge.swift`).
-It loads `https://cstimer.net` by default, or `https://cstimer.gnuyen.org`, which runs
+It loads `https://cstimer.gnuyen.org`, which runs
 [bsTimer](https://github.com/gnuyen/bstimer), a lightly modified csTimer with iCloud
-sync (see *Website choice* and *The website*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+sync (see *The website*), or optionally `https://cstimer.net` (see *Website choice*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
 
 bsTimer is an unofficial wrapper. csTimer is written by
 [cs0x7f](https://github.com/cs0x7f/cstimer) and licensed under GPL-3.0; this repository
@@ -17,8 +17,8 @@ and lets it auto-lock normally when the timer is idle. Turning a smart cube's fa
 
 ## Website choice
 
-The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: csTimer.net
-(default, where people's existing solves are) or bsTimer (`https://cstimer.gnuyen.org`). The two sites keep separate
+The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: bsTimer
+(default, `https://cstimer.gnuyen.org`) or csTimer.net. The two sites keep separate
 solves on the device. Bluetooth and the screen lock work on both. iCloud sync is
 bsTimer only. Google sign-in does not work in the app on csTimer.net (its login
 returns to csTimer.net in the system sign-in sheet); use WCA sign-in there. The

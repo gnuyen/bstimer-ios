@@ -22,7 +22,7 @@
 			<key>Key</key>
 			<string>site</string>
 			<key>DefaultValue</key>
-			<string>cstimer</string>
+			<string>bstimer</string>
 			<key>Titles</key>
 			<array>
 				<string>bsTimer</string>
