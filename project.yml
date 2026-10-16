@@ -23,6 +23,9 @@ targets:
         com.apple.developer.icloud-services:
           - CloudKit
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
+        # Sign in with Apple (so the App ID gets the capability; the sign-in itself comes later)
+        com.apple.developer.applesignin:
+          - Default
     configFiles:
       Debug: Config/Signing.xcconfig
       Release: Config/Signing.xcconfig
