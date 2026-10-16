@@ -14,6 +14,15 @@ contains none of its code, only the app that loads it.
 The app also keeps the screen awake while a timer is in inspection, ready or running,
 and lets it auto-lock normally when the timer is idle.
 
+## Website choice
+
+The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: bsTimer
+(default, `https://cstimer.gnuyen.org`) or csTimer.net. The two sites keep separate
+solves on the device. Bluetooth and the screen lock work on both. iCloud sync is
+bsTimer only. Google sign-in does not work in the app on csTimer.net (its login
+returns to csTimer.net in the system sign-in sheet); use WCA sign-in there. The
+change takes effect when you return to the app.
+
 ## Branding
 
 The app is called bsTimer (name, icon, messages) so it isn't mistaken for the official
@@ -69,6 +78,32 @@ background, so a deploy shows up on the second launch. The app lists the site un
 4. On the iPhone enable *Settings → Privacy & Security → Developer Mode*, connect
    it, pick it as the run destination and press Run. The first launch may require
    trusting the developer under *Settings → General → VPN & Device Management*.
+
+Run `xcodegen generate` after pulling. It creates `Info.plist` and
+`bsTimer.entitlements`, both of which git ignores.
+
+## iCloud sync
+
+In bsTimer mode the page syncs to the user's private CloudKit database (container
+`iCloud.org.gnuyen.bstimer`, one record named `snapshot` of type `Snapshot` holding
+zlib-compressed JSON in an asset) with no sign-in, and keeps a copy on the bsTimer
+sync server. That server's sync code is stored in iCloud key-value storage (key
+`serverCode`) so other devices and reinstalls reuse it. The bridge is
+`CloudBridge.swift` (message handler `bsCloud`, see [PROTOCOL.md](PROTOCOL.md)).
+
+Setup for a new developer team:
+
+1. `project.yml` already requests the iCloud entitlements (CloudKit container and
+   key-value storage).
+2. In Xcode, open Signing & Capabilities for the target; under iCloud make sure the
+   container `iCloud.org.gnuyen.bstimer` is ticked (press + to create it if Xcode says
+   it doesn't exist; use your own container id if you change the bundle id, and update
+   `CloudBridge.containerIdentifier` and `project.yml`).
+3. Debug builds use CloudKit's Development environment, where the record type is
+   created on the first save. Before a TestFlight or App Store build, open the CloudKit
+   Console, pick the container, and "Deploy Schema Changes" to Production.
+4. The simulator needs an iCloud account signed in (Settings app) to test sync; without
+   one the page falls back to the website's sync options.
 
 ## Debugging
 

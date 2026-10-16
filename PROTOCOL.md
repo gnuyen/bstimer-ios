@@ -55,3 +55,22 @@ Native calls `window.__cstimerBLE.dispatch(evt)` via `evaluateJavaScript`:
 
 Every `DataView` the shim hands to the page must sit at byte offset 0 of its own
 `ArrayBuffer` (cstimer drivers call `.buffer.slice(...)` on them).
+
+## iCloud bridge (bsCloud)
+
+The app registers a second handler, `bsCloud`, only in bsTimer mode. It answers
+only main-frame `https` pages on the bsTimer host.
+`window.webkit.messageHandlers.bsCloud.postMessage(msg)` returns a Promise (native
+side is a `WKScriptMessageHandlerWithReply`).
+
+| op | args | resolves with |
+|----|------|---------------|
+| `status` | – | `{available: bool (iCloud account usable), code: string\|null (server sync code from key-value storage)}` |
+| `get` | – | `null` when nothing is stored yet, else `{data: JSON text, tag: string}` |
+| `put` | `data: JSON text`, `tag: string\|null` | `{ok: true, tag: new tag}`, or `{conflict: true}` when the stored record's tag is not `tag` (`null` means "expect no record"); the page then gets, merges and tries again |
+| `setCode` | `code: string\|null` | `true` (`null` removes it) |
+
+Errors reject the Promise with a message starting `"iCloud: "`.
+
+Event (native → JS): when another device changes the code in key-value storage, the
+app calls `window.bsSync.cloudCodeChanged(code)`.
