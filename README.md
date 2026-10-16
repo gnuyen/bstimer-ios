@@ -91,6 +91,11 @@ sync server. That server's sync code is stored in iCloud key-value storage (key
 `serverCode`) so other devices and reinstalls reuse it. The bridge is
 `CloudBridge.swift` (message handler `bsCloud`, see [PROTOCOL.md](PROTOCOL.md)).
 
+The Sync section also offers "Sign in with Apple (to use the website)". The app uses
+the native Apple sign-in sheet (bsCloud op `appleSignIn`) and sends the identity token
+to the sync server, which links the Apple ID to the app's server copy. The App ID needs
+the Sign in with Apple capability (project.yml requests it).
+
 Setup for a new developer team:
 
 1. `project.yml` already requests the iCloud entitlements (CloudKit container and

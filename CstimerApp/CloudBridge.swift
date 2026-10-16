@@ -1,3 +1,4 @@
+import AuthenticationServices
 import CloudKit
 import UIKit
 import WebKit
@@ -16,6 +17,8 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
     private let recordType = "Snapshot"
     private let codeKey = "serverCode"
     private var lastRecord: CKRecord?
+    private var appleReply: ((Any?, String?) -> Void)?
+    private var appleController: ASAuthorizationController?
 
     // MARK: - Init
 
@@ -67,6 +70,8 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             handlePut(body, replyHandler)
         case "setCode":
             handleSetCode(body, replyHandler)
+        case "appleSignIn":
+            handleAppleSignIn(replyHandler)
         default:
             reject(replyHandler, "unknown op")
         }
@@ -227,6 +232,21 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
         resolve(r, true)
     }
 
+    private func handleAppleSignIn(_ r: @escaping (Any?, String?) -> Void) {
+        if appleReply != nil {
+            reject(r, "busy")
+            return
+        }
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = []
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        appleReply = r
+        appleController = controller
+        controller.performRequests()
+    }
+
     // MARK: - KVS Changes
 
     @objc private func codeChangedExternally(_ note: Notification) {
@@ -246,5 +266,51 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             }
             self.webView?.evaluateJavaScript("window.bsSync && window.bsSync.cloudCodeChanged(\(json)[0])", completionHandler: nil)
         }
+    }
+}
+
+// MARK: - Sign in with Apple
+
+extension CloudBridge: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        let r = appleReply
+        appleReply = nil
+        appleController = nil
+        guard let r = r else { return }
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = credential.identityToken,
+              let token = String(data: tokenData, encoding: .utf8) else {
+            #if DEBUG
+            NSLog("[cloud] op appleSignIn -> error (no token)")
+            #endif
+            reject(r, "Sign in with Apple: no token")
+            return
+        }
+        #if DEBUG
+        NSLog("[cloud] op appleSignIn -> ok")
+        #endif
+        resolve(r, ["token": token])
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        let r = appleReply
+        appleReply = nil
+        appleController = nil
+        guard let r = r else { return }
+        if (error as? ASAuthorizationError)?.code == .canceled {
+            #if DEBUG
+            NSLog("[cloud] op appleSignIn -> cancelled")
+            #endif
+            reject(r, "cancelled")
+        } else {
+            #if DEBUG
+            NSLog("[cloud] op appleSignIn -> error")
+            #endif
+            reject(r, "Sign in with Apple: " + error.localizedDescription)
+        }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        webView?.window ?? ASPresentationAnchor()
     }
 }

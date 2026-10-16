@@ -4,7 +4,7 @@ import UIKit
 import WebKit
 
 /// Bumped with every change to the app so the launch badge shows which revision is installed.
-let appRevision = 19
+let appRevision = 20
 
 final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
