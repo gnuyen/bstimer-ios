@@ -3,9 +3,9 @@
 bsTimer is an iOS app that runs csTimer from `https://cstimer.gnuyen.org` in a
 `WKWebView` and gives it the Web Bluetooth support iOS Safari lacks.
 `bluetooth-shim.js` provides `navigator.bluetooth` inside the page and forwards
-every call to CoreBluetooth (`BluetoothBridge.swift`). csTimer itself is
-unmodified apart from one small script on the server (see *Server setup*). See
-[PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+every call to CoreBluetooth (`BluetoothBridge.swift`). The site runs
+[bsTimer](https://github.com/gnuyen/bstimer), a lightly modified csTimer (see *The
+website*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
 
 bsTimer is an unofficial wrapper. csTimer is written by
 [cs0x7f](https://github.com/cs0x7f/cstimer) and licensed under GPL-3.0; this repository
@@ -42,33 +42,25 @@ The bundle id is `org.gnuyen.bstimer`.
 | `CstimerApp/DownloadHandler.swift` | Saves exports and offers them through the share sheet |
 | `CstimerApp/AppDelegate.swift` | App and scene delegates |
 | `CstimerApp/Assets.xcassets` | App icon |
-| `server/app-auth.js` | Server-side helper that hands Google sign-in back to the app |
-| `server/sw.js` | Service worker for offline use, deployed as the site's `sw.js` |
+| `CstimerApp/CloudBridge.swift` | iCloud sync and Sign in with Apple for the page (`bsCloud`) |
+| `CstimerApp/SiteMode.swift` | The Settings choice between the bsTimer site and csTimer.net |
 | `scripts/mac-build.sh` | Builds on a remote Mac over SSH |
 | `scripts/make-icon.swift` | Renders the app icon |
 | `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed) |
-| `test/*.test.js` | Node tests for the shim and the service worker |
+| `test/*.test.js` | Node tests for the shim |
 
-## Server setup
+## The website
 
-Google sign-in runs in an `ASWebAuthenticationSession` and returns to the csTimer page
-with the token in the URL fragment. To get it back into the app, copy
-`server/app-auth.js` to the server's `js/` folder and load it first in `index.php`'s
-`<head>`:
+The page side lives in the [bsTimer](https://github.com/gnuyen/bstimer) fork of csTimer:
 
-```html
-<script src="js/app-auth.js"></script>
-```
-
-It only acts when the URL carries `state=cstimer-ios`, which only the app adds, so
-browsers and the home-screen web app are unaffected. WCA sign-in needs nothing extra.
-
-For offline use, replace csTimer's placeholder `sw.js` at the site root with
-`server/sw.js`. csTimer already registers it. After one online launch the page and its
-scripts are cached, so the app (and the home-screen web app) opens without a
-connection. The page is fetched fresh when online; scripts are refreshed in the
-background, so a deploy shows up on the second launch. The app lists the site under
-`WKAppBoundDomains`, which WKWebView requires before it runs service workers.
+- `js/bstimer/app-auth.js` hands Google sign-in back to the app. Google sign-in runs in
+  an `ASWebAuthenticationSession` and returns to the page with the token in the URL
+  fragment; the script only acts when the URL carries `state=cstimer-ios`, which only
+  the app adds. WCA sign-in needs nothing extra.
+- `sw.js` makes the site work offline. The app lists the site under
+  `WKAppBoundDomains`, which WKWebView requires before it runs service workers.
+- The Sync section (`js/bstimer/sync*.js`, `sync.php`) uses the app's `bsCloud`
+  bridge for iCloud sync.
 
 ## Build and run (on a Mac)
 
