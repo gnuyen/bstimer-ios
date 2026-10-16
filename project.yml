@@ -14,6 +14,15 @@ targets:
           - "Resources/**"
       - path: CstimerApp/Resources
         buildPhase: resources
+    entitlements:
+      path: CstimerApp/bsTimer.entitlements
+      properties:
+        # iCloud sync (bsTimer mode): the data in CloudKit, the server sync code in key-value storage.
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.org.gnuyen.bstimer
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
     configFiles:
       Debug: Config/Signing.xcconfig
       Release: Config/Signing.xcconfig
@@ -37,6 +46,8 @@ targets:
         # The WCA hosts are listed so in-app sign-in keeps working if navigation is limited to these.
         WKAppBoundDomains:
           - cstimer.gnuyen.org
+          - cstimer.net
+          - www.cstimer.net
           - www.worldcubeassociation.org
           - worldcubeassociation.org
         UIApplicationSceneManifest:

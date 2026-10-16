@@ -11,3 +11,4 @@ notes/
 
 # Per-developer signing team
 Config/Local.xcconfig
+CstimerApp/bsTimer.entitlements

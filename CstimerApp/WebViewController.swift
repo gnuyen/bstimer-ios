@@ -4,12 +4,14 @@ import UIKit
 import WebKit
 
 /// Bumped with every change to the app so the launch badge shows which revision is installed.
-let appRevision = 18
+let appRevision = 19
 
 final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
-    private let startURL = URL(string: "https://cstimer.gnuyen.org/")!
-    private let allowedHost = "cstimer.gnuyen.org"
+    /// The site chosen in the Settings app when this controller was made. SceneDelegate
+    /// makes a new controller when the choice changes.
+    let mode = SiteMode.current
+    private var startURL: URL { mode.startURL }
     /// Login pages kept inside the app so their redirect back to cstimer lands here, not in Safari.
     /// (Google is not listed: it refuses sign-in inside embedded web views, see startGoogleSignIn.)
     private let inAppLoginHosts: Set<String> = ["www.worldcubeassociation.org", "worldcubeassociation.org"]
@@ -25,7 +27,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     #endif
     
     private var webView: WKWebView!
-    private lazy var bridge = BluetoothBridge(allowedHost: allowedHost)
+    private lazy var bridge = BluetoothBridge(allowedHosts: mode.hosts)
+    private lazy var cloud = CloudBridge(allowedHosts: mode.hosts)
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -82,6 +85,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         )
         
         config.userContentController.addScriptMessageHandler(bridge, contentWorld: .page, name: BluetoothBridge.handlerName)
+        // iCloud sync is a bsTimer feature; csTimer.net has its own backups.
+        if mode.usesICloudSync {
+            config.userContentController.addScriptMessageHandler(cloud, contentWorld: .page, name: CloudBridge.handlerName)
+        }
         
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -103,6 +110,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         ])
         
         bridge.webView = webView
+        if mode.usesICloudSync {
+            cloud.webView = webView
+        }
         bridge.presenter = { [weak self] in
             self?.topPresentedController()
         }
@@ -151,7 +161,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             return
         }
         
-        if url!.host == allowedHost || inAppLoginHosts.contains(url!.host ?? "") {
+        if mode.hosts.contains(url!.host ?? "") || inAppLoginHosts.contains(url!.host ?? "") {
             decisionHandler(.allow)
             return
         }
@@ -162,6 +172,13 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         }
         
         if url!.host == "accounts.google.com" {
+            if mode == .cstimer {
+                // csTimer.net's Google login returns to csTimer.net in the system sign-in
+                // sheet, which has no way back to the app.
+                showMessage("Google sign-in doesn't work in the app on csTimer.net. Use WCA sign-in, or choose bsTimer in the Settings app.")
+                decisionHandler(.cancel)
+                return
+            }
             startGoogleSignIn(url!)
             decisionHandler(.cancel)
             return
@@ -248,7 +265,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         )
         
         let retryAction = UIAlertAction(title: "Retry", style: .default) { [weak self] _ in
-            self?.webView.load(URLRequest(url: self?.startURL ?? URL(string: "https://cstimer.gnuyen.org/")!))
+            guard let self = self else { return }
+            self.webView.load(URLRequest(url: self.startURL))
         }
         alert.addAction(retryAction)
         
@@ -258,6 +276,13 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         present(alert, animated: true)
     }
     
+    private func showMessage(_ message: String) {
+        guard let presenter = topPresentedController() else { return }
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        presenter.present(alert, animated: true)
+    }
+
     // MARK: - WKUIDelegate
     
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {

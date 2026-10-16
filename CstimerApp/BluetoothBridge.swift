@@ -7,7 +7,7 @@ typealias Reply = (Any?, String?) -> Void
 final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentralManagerDelegate, CBPeripheralDelegate {
     static let handlerName = "cstimerBLE"
 
-    private let allowedHost: String
+    private let allowedHosts: Set<String>
     private var centralCreated = false
     lazy var central: CBCentralManager = {
         centralCreated = true
@@ -48,8 +48,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
         NSError(domain: "BluetoothBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: msg])
     }
 
-    init(allowedHost: String) {
-        self.allowedHost = allowedHost
+    init(allowedHosts: Set<String>) {
+        self.allowedHosts = allowedHosts
         super.init()
     }
 
@@ -153,7 +153,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         let origin = message.frameInfo.securityOrigin
-        if !message.frameInfo.isMainFrame || origin.protocol != "https" || origin.host != allowedHost {
+        if !message.frameInfo.isMainFrame || origin.protocol != "https" || !allowedHosts.contains(origin.host) {
             reject(replyHandler, "SecurityError", "Origin not allowed")
             return
         }

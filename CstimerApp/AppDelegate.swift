@@ -22,4 +22,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = WebViewController()
         window?.makeKeyAndVisible()
     }
+
+    /// The site can be changed in the Settings app while bsTimer is in the background.
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        if let current = window?.rootViewController as? WebViewController, current.mode != SiteMode.current {
+            window?.rootViewController = WebViewController()
+        }
+    }
 }
