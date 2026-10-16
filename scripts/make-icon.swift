@@ -1,5 +1,7 @@
-// Renders the 1024×1024 bsTimer app icon: a stopwatch whose face is a scrambled cube face.
+// Renders the 1024×1024 bsTimer app icon: a stopwatch whose face is a scrambled cube face,
+// above the name.
 // Usage (on a Mac): swift scripts/make-icon.swift CstimerApp/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+import AppKit
 import Foundation
 import CoreGraphics
 import ImageIO
@@ -56,6 +58,13 @@ func strokeRoundedRect(_ rect: CGRect, cornerRadius: CGFloat, color: CGColor, wi
     ctx.setLineWidth(width)
     ctx.strokePath()
 }
+
+// The stopwatch is drawn at 78% size in the upper part, leaving room for the name below:
+// y' = 30 + 0.78 * y, centred horizontally.
+ctx.saveGState()
+ctx.translateBy(x: 512, y: 30)
+ctx.scaleBy(x: 0.78, y: 0.78)
+ctx.translateBy(x: -512, y: 0)
 
 // 3. Crown (drawn before the body so the circle overlaps its bottom edge).
 let crownRect = CGRect(x: 452, y: 120, width: 120, height: 80)
@@ -128,6 +137,19 @@ ctx.strokePath()
 // Centre dot.
 fillCircle(center: bodyCenter, radius: 26, color: rgb(0x111111))
 fillCircle(center: bodyCenter, radius: 12, color: rgb(0xffffff))
+ctx.restoreGState()
+
+// 7. The name, in the band below the stopwatch (y 790...960), white, scaled to 74% of the width.
+let title = "bsTimer" as NSString
+let fontName = NSFont(name: "HelveticaNeue-Bold", size: 100) != nil ? "HelveticaNeue-Bold" : "Helvetica-Bold"
+var font = NSFont(name: fontName, size: 100)!
+font = NSFont(name: fontName, size: 100 * (1024 * 0.74) / title.size(withAttributes: [.font: font]).width)!
+let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
+let textSize = title.size(withAttributes: attrs)
+NSGraphicsContext.saveGraphicsState()
+NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
+title.draw(at: NSPoint(x: 512 - textSize.width / 2, y: 875 - textSize.height / 2), withAttributes: attrs)
+NSGraphicsContext.restoreGraphicsState()
 
 let image = ctx.makeImage()!
 let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: outPath) as CFURL, UTType.png.identifier as CFString, 1, nil)!
