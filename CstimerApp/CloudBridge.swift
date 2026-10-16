@@ -16,6 +16,8 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
     private let recordID = CKRecord.ID(recordName: "snapshot")
     private let recordType = "Snapshot"
     private let codeKey = "serverCode"
+    /// The page's own settings (JSON), restored on a fresh install or another Apple device.
+    private let settingsKey = "appSettings"
     private var lastRecord: CKRecord?
     private var appleReply: ((Any?, String?) -> Void)?
     private var appleController: ASAuthorizationController?
@@ -74,6 +76,17 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             handleAppleSignIn(replyHandler)
         case "deleteAll":
             handleDeleteAll(replyHandler)
+        case "getSettings":
+            resolve(replyHandler, kvs.string(forKey: settingsKey) ?? NSNull())
+        case "setSettings":
+            // Key-value storage holds 1 MB in all; the page sends far less.
+            guard let text = body["data"] as? String, text.utf8.count < 500_000 else {
+                reject(replyHandler, "bad message")
+                return
+            }
+            kvs.set(text, forKey: settingsKey)
+            kvs.synchronize()
+            resolve(replyHandler, true)
         default:
             reject(replyHandler, "unknown op")
         }
@@ -233,6 +246,7 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             }
             lastRecord = nil
             kvs.removeObject(forKey: codeKey)
+            kvs.removeObject(forKey: settingsKey)
             kvs.synchronize()
             #if DEBUG
             NSLog("[cloud] op deleteAll -> ok")

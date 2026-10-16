@@ -71,7 +71,9 @@ side is a `WKScriptMessageHandlerWithReply`).
 | `put` | `data: JSON text`, `tag: string\|null` | `{ok: true, tag: new tag}`, or `{conflict: true}` when the stored record's tag is not `tag` (`null` means "expect no record"); the page then gets, merges and tries again |
 | `setCode` | `code: string\|null` | `true` (`null` removes it) |
 | `appleSignIn` | – | `{token: Apple identity token (JWT), code?: authorization code}`; rejects with `"cancelled"` if the user closes the sheet. The server exchanges the code for a refresh token so it can revoke the sign-in when the data is deleted |
-| `deleteAll` | – | `true`; deletes the `snapshot` record and the `serverCode` key (the user deleted their synced data) |
+| `deleteAll` | – | `true`; deletes the `snapshot` record and the `serverCode` and `appSettings` keys (the user deleted their synced data) |
+| `getSettings` | – | the page's saved settings (JSON text) from key-value storage, or `null` |
+| `setSettings` | `data: string` (under 500 KB) | `true`; saves the page's settings (all of them, kept apart from sync) so a fresh install or another Apple device starts with them |
 
 Errors reject the Promise with a message starting `"iCloud: "`.
 
