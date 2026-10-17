@@ -39,7 +39,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         # The build number; the app's revision badge (r23 …) shows the same number.
-        CURRENT_PROJECT_VERSION: "28"
+        CURRENT_PROJECT_VERSION: "29"
     info:
       path: CstimerApp/Info.plist
       properties:

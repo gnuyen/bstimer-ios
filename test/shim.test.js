@@ -372,3 +372,42 @@ test('file inputs lose their accept filter so the iOS picker allows any file', (
 	fire(other);
 	assert.deepEqual(removed, ['accept']);
 });
+
+// App Store rules: no outside donation links (guideline 3.1.1) and no ads setting in the app,
+// on bsTimer and on cstimer.net alike. The shim adds a stylesheet once the page has loaded.
+function withStyles() {
+	const head = { children: [], appendChild(el) { this.children.push(el); return el; } };
+	const document = {
+		head,
+		createElement(tag) { return { tagName: tag.toUpperCase(), textContent: '', id: '' }; },
+		getElementById(id) { return head.children.find((c) => c.id === id) || null; },
+	};
+	const env = load({}, { document });
+	env.win.dispatchEvent(new Event('DOMContentLoaded'));
+	return { env, head };
+}
+
+test("the app hides csTimer's donate button and its advertisements setting", () => {
+	const { head } = withStyles();
+	const styles = head.children.filter((c) => c.tagName === 'STYLE');
+	assert.equal(styles.length, 1, 'one stylesheet');
+	const css = styles[0].textContent.replace(/\s+/g, ' ');
+	assert.match(css, /#leftbar > \.c5\b[^{]*\{[^}]*display: none/, 'donate button (toolbar slot 5) hidden');
+	// only the setting's own row: tr > td > label > input. A plain tr:has(input) would also match
+	// the outer row that holds the whole settings table, and hide every setting.
+	assert.match(css, /tr:has\(> td > label > input\[name="showad"\]\)[^{]*\{[^}]*display: none/, 'advertisements setting row hidden');
+	assert.doesNotMatch(css, /tr:has\(input/, 'no selector that matches ancestor rows');
+	assert.equal(styles[0].id, 'bstimer-app-hide');
+});
+
+test('the stylesheet is added only once', () => {
+	const { env, head } = withStyles();
+	env.win.dispatchEvent(new Event('DOMContentLoaded'));
+	assert.equal(head.children.filter((c) => c.id === 'bstimer-app-hide').length, 1);
+});
+
+test('no document head: the shim carries on', () => {
+	const env = load({}, { document: { head: null, createElement() { return {}; }, getElementById() { return null; } } });
+	env.win.dispatchEvent(new Event('DOMContentLoaded'));
+	assert.equal(typeof env.bt.requestDevice, 'function');
+});

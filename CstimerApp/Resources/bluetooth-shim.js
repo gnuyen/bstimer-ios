@@ -438,4 +438,25 @@
 			return inner.apply(this, arguments);
 		};
 	});
+
+	// App Store rules: hide csTimer's donate button (a link to outside payments, guideline
+	// 3.1.1) and its "Show advertisements" setting. Works on bsTimer and on cstimer.net alike.
+	window.addEventListener('DOMContentLoaded', function () {
+		try {
+			var document = window.document;
+			if (!document || !document.head) {
+				return;
+			}
+			if (document.getElementById('bstimer-app-hide')) {
+				return;
+			}
+			var style = document.createElement('style');
+			style.id = 'bstimer-app-hide';
+			style.textContent = '#leftbar > .c5 { display: none !important; }\n' +
+				'tr:has(> td > label > input[name="showad"]) { display: none !important; }';
+			document.head.appendChild(style);
+		} catch (err) {
+			console.error('cstimer BLE hide-donate error', err);
+		}
+	});
 })();
