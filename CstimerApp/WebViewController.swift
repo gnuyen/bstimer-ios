@@ -144,7 +144,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         let url = navigationAction.request.url
         #if DEBUG
         if navigationAction.targetFrame?.isMainFrame != false {
-            NSLog("[nav] main-frame navigation to %@", url?.absoluteString.prefix(120).description ?? "nil")
+            NSLog("[nav] main-frame navigation to %@", "\(url?.scheme ?? "")://\(url?.host ?? "")\(url?.path ?? "")")
         }
         #endif
         
@@ -175,21 +175,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             return
         }
         
-        if url!.host == "accounts.google.com" {
-            if mode == .cstimer {
-                // csTimer.net's Google login returns to csTimer.net in the system sign-in
-                // sheet, which has no way back to the app.
-                showMessage("Google sign-in doesn't work in the app on csTimer.net. Use WCA sign-in, or choose bsTimer in the Settings app.")
-                decisionHandler(.cancel)
-                return
-            }
-            startGoogleSignIn(url!)
-            decisionHandler(.cancel)
-            return
-        }
-
         // Main frame navigation to another host or targetFrame is nil
-        UIApplication.shared.open(url!)
+        openOutside(url!)
         decisionHandler(.cancel)
     }
     
@@ -287,6 +274,30 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         presenter.present(alert, animated: true)
     }
 
+    /// Pages that don't load inside the app: Google sign-in goes to the system sign-in sheet,
+    /// and other web and mail links go to iOS. Anything else (custom app schemes, tel:, etc.)
+    /// is ignored, so a page can't launch other apps.
+    private func openOutside(_ url: URL) {
+        if url.host == "accounts.google.com" {
+            if mode == .cstimer {
+                // csTimer.net's Google login returns to csTimer.net in the system sign-in
+                // sheet, which has no way back to the app.
+                showMessage("Google sign-in doesn't work in the app on csTimer.net. Use WCA sign-in, or choose bsTimer in the Settings app.")
+            } else {
+                startGoogleSignIn(url)
+            }
+            return
+        }
+        let scheme = url.scheme?.lowercased() ?? ""
+        guard ["https", "http", "mailto"].contains(scheme) else {
+            #if DEBUG
+            NSLog("[nav] refused to open scheme %@", scheme)
+            #endif
+            return
+        }
+        UIApplication.shared.open(url)
+    }
+
     // MARK: - WKUIDelegate
     
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
@@ -344,8 +355,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     }
     
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        // Pop-ups (target=_blank, window.open) never open a second web view; they follow the
+        // same rules as leaving the page.
         if let url = navigationAction.request.url {
-            UIApplication.shared.open(url)
+            openOutside(url)
         }
         return nil
     }
@@ -420,7 +433,7 @@ extension WebViewController: ASWebAuthenticationPresentationContextProviding {
             guard let self = self else { return }
             self.authSession = nil
             #if DEBUG
-            NSLog("[auth] callback: %@", callbackURL?.absoluteString ?? "nil, error: \(String(describing: error))")
+            NSLog("[auth] callback: %@", callbackURL != nil ? "received" : "none, error: \(String(describing: error))")
             #endif
             // Cancelled or failed: stay on the current page.
             guard let callbackURL = callbackURL,

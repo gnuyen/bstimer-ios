@@ -23,11 +23,16 @@ forwards every call to Swift (`BluetoothBridge`).
 `window.webkit.messageHandlers.cstimerBLE.postMessage({op, ...args})` returns a
 Promise (native side is a `WKScriptMessageHandlerWithReply`).
 
+Every op that takes a `deviceId` only works for a device the user picked in the chooser
+(`requestDevice`), as in Web Bluetooth; any other id rejects `NotFoundError: Unknown device`.
+Picked devices stay usable across page reloads until the app quits. The shim rejects
+malformed UUIDs with a `TypeError` before calling native.
+
 | op | args | resolves with |
 |----|------|---------------|
 | `getAvailability` | – | `true` if Bluetooth is powered on, else `false` (waits for CoreBluetooth to leave `.unknown`/`.resetting`: up to 120 s while the permission prompt may be showing, otherwise 3 s) |
 | `requestDevice` | `filters: [{namePrefix?, name?, services?: [uuid]}]`, `acceptAllDevices: bool` | `{deviceId, name}`; shows the native picker; rejects `NotFoundError` on cancel |
-| `connect` | `deviceId` | `null` once connected (10 s timeout → `NetworkError`) |
+| `connect` | `deviceId` | `null` once connected (10 s timeout per connection attempt → `NetworkError`) |
 | `disconnect` | `deviceId` | `null` |
 | `getPrimaryServices` | `deviceId`, `service?: uuid` | `[uuid]`; `NotFoundError` if `service` given and absent |
 | `getCharacteristics` | `deviceId`, `service`, `characteristic?: uuid` | `[{uuid, properties: {read, write, writeWithoutResponse, notify, indicate}}]`; `NotFoundError` if absent |
@@ -38,7 +43,7 @@ Promise (native side is a `WKScriptMessageHandlerWithReply`).
 | `watchAdvertisements` | `deviceId` | `null`; native scans and emits `advertisement` events for that device until unwatched |
 | `unwatchAdvertisements` | `deviceId` | `null` |
 | `setKeepAwake` | `on: bool` | `null`; sets `UIApplication.isIdleTimerDisabled`. Sent by the shim when cstimer's `timerStatus` signal leaves or returns to idle (`-1`); reset to `false` on page reload |
-| `userActivity` | none | `null`; restarts the screen's sleep countdown (turns the idle timer off and back on) unless `setKeepAwake` is on. Sent by the shim, at most every 5 s, when a smart cube reports a face turn through `GiikerCube.callback`; gyro updates don't count |
+| `userActivity` | none | `null`; restarts the screen's sleep countdown (turns the idle timer off and back on) unless `setKeepAwake` is on, at most once every 2 s. Sent by the shim, at most every 5 s, when a smart cube reports a face turn through `GiikerCube.callback`; gyro updates don't count |
 
 ## Events (native → JS)
 

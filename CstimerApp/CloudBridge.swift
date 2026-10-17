@@ -6,6 +6,8 @@ import WebKit
 final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
     static let handlerName = "bsCloud"
     static let containerIdentifier = "iCloud.org.gnuyen.bstimer"
+    /// Largest snapshot accepted or returned, uncompressed. Matches the sync server's per-user cap.
+    static let maxSnapshotBytes = 64 * 1024 * 1024
 
     weak var webView: WKWebView?
 
@@ -116,10 +118,19 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
                     reject(r, "iCloud: no data")
                     return
                 }
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
+                if fileSize > CloudBridge.maxSnapshotBytes {
+                    reject(r, "iCloud: data too large")
+                    return
+                }
                 let data = try Data(contentsOf: url)
                 let text: String
                 if record["encoding"] as? String == "zlib" {
                     let decompressed = try (data as NSData).decompressed(using: .zlib) as Data
+                    if decompressed.count > CloudBridge.maxSnapshotBytes {
+                        reject(r, "iCloud: data too large")
+                        return
+                    }
                     guard let s = String(data: decompressed, encoding: .utf8) else {
                         reject(r, "iCloud: unreadable data")
                         return
@@ -149,6 +160,10 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
     private func handlePut(_ body: [String: Any], _ r: @escaping (Any?, String?) -> Void) {
         guard let text = body["data"] as? String else {
             reject(r, "bad message")
+            return
+        }
+        if text.utf8.count > CloudBridge.maxSnapshotBytes {
+            reject(r, "iCloud: data too large")
             return
         }
         let tag = body["tag"] as? String

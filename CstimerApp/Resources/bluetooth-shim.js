@@ -23,7 +23,10 @@
 		if (/^[0-9a-f]{8}$/.test(s)) {
 			return (s + SUFFIX).toLowerCase();
 		}
-		return s;
+		if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s)) {
+			return s;
+		}
+		throw new TypeError('Invalid Service name: ' + JSON.stringify(String(u)) + '. It must be a valid UUID.');
 	}
 
 	function toBase64(bufferSource) {
@@ -167,7 +170,12 @@
 	};
 	BluetoothRemoteGATTServer.prototype.getPrimaryService = function (uuid) {
 		var self = this;
-		var service = canon(uuid);
+		var service;
+		try {
+			service = canon(uuid);
+		} catch (err) {
+			return Promise.reject(err);
+		}
 		return call('getPrimaryServices', { deviceId: self.device.id, service: service }).then(function (uuids) {
 			return getService(self.device, uuids[0]);
 		});
@@ -176,7 +184,11 @@
 		var self = this;
 		var args = { deviceId: self.device.id };
 		if (uuid !== undefined) {
-			args.service = canon(uuid);
+			try {
+				args.service = canon(uuid);
+			} catch (err) {
+				return Promise.reject(err);
+			}
 		}
 		return call('getPrimaryServices', args).then(function (uuids) {
 			return uuids.map(function (u) {
@@ -193,7 +205,12 @@
 	}
 	BluetoothRemoteGATTService.prototype.getCharacteristic = function (uuid) {
 		var self = this;
-		var characteristic = canon(uuid);
+		var characteristic;
+		try {
+			characteristic = canon(uuid);
+		} catch (err) {
+			return Promise.reject(err);
+		}
 		return call('getCharacteristics', {
 			deviceId: self.device.id,
 			service: self.uuid,
@@ -206,7 +223,11 @@
 		var self = this;
 		var args = { deviceId: self.device.id, service: self.uuid };
 		if (uuid !== undefined) {
-			args.characteristic = canon(uuid);
+			try {
+				args.characteristic = canon(uuid);
+			} catch (err) {
+				return Promise.reject(err);
+			}
 		}
 		return call('getCharacteristics', args).then(function (list) {
 			return list.map(function (item) {
@@ -326,19 +347,24 @@
 		},
 		requestDevice: function (options) {
 			options = options || {};
-			var filters = (options.filters || []).map(function (f) {
-				var out = {};
-				if (f.name !== undefined) {
-					out.name = f.name;
-				}
-				if (f.namePrefix !== undefined) {
-					out.namePrefix = f.namePrefix;
-				}
-				if (f.services !== undefined) {
-					out.services = f.services.map(canon);
-				}
-				return out;
-			});
+			var filters;
+			try {
+				filters = (options.filters || []).map(function (f) {
+					var out = {};
+					if (f.name !== undefined) {
+						out.name = f.name;
+					}
+					if (f.namePrefix !== undefined) {
+						out.namePrefix = f.namePrefix;
+					}
+					if (f.services !== undefined) {
+						out.services = f.services.map(canon);
+					}
+					return out;
+				});
+			} catch (err) {
+				return Promise.reject(err);
+			}
 			return call('requestDevice', {
 				filters: filters,
 				acceptAllDevices: !!options.acceptAllDevices,

@@ -34,8 +34,14 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     /// Devices whose services were discovered on the current connection.
     private var servicesDiscovered: Set<UUID> = []
 
+    /// Devices the user picked in the chooser; only these may be used, as in Web Bluetooth.
+    /// Kept across page reloads (cstimer reconnects to the same device); cleared when the app quits.
+    private var authorized: Set<UUID> = []
+
     private var availabilityWaiters: [Reply] = []
     private var connectWaiters: [UUID: [Reply]] = [:]
+    private var connectAttempt: [UUID: Int] = [:]
+    private var attemptCounter = 0
     private var serviceWaiters: [UUID: [(Error?) -> Void]] = [:]
     private var charWaiters: [String: [(Error?) -> Void]] = [:]
     private var readWaiters: [String: [Reply]] = [:]
@@ -43,6 +49,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     private var notifyWaiters: [String: [Reply]] = [:]
     /// The page asked to keep the screen on (a timer is in use).
     private var keepAwake = false
+    private var lastActivityRestart = Date.distantPast
 
     // MARK: - Init
 
@@ -63,6 +70,16 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
 
     private func reject(_ r: @escaping Reply, _ name: String, _ msg: String) {
         r(nil, "\(name): \(msg)")
+    }
+
+    /// The picked device named in the message, or nil (after rejecting the reply) if the page
+    /// names a device the user never picked.
+    private func authorizedID(_ body: [String: Any], _ r: @escaping Reply) -> UUID? {
+        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr), authorized.contains(id) else {
+            reject(r, "NotFoundError", "Unknown device")
+            return nil
+        }
+        return id
     }
 
     private func canon(_ u: CBUUID) -> String {
@@ -193,7 +210,11 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
             UIApplication.shared.isIdleTimerDisabled = keepAwake
             resolve(replyHandler)
         case "userActivity":
-            restartIdleTimer()
+            // The page already sends at most one every 5 s; this guards against a page that doesn't.
+            if Date().timeIntervalSince(lastActivityRestart) >= 2 {
+                restartIdleTimer()
+                lastActivityRestart = Date()
+            }
             resolve(replyHandler)
         default:
             reject(replyHandler, "NotSupportedError", "Unknown op \(op)")
@@ -298,6 +319,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
 
     private func pickerSelected(_ id: UUID) {
         guard let r = pickerReply else { return }
+        authorized.insert(id)
         let name = lastSeenNames[id]
         let result: [String: Any] = ["deviceId": id.uuidString, "name": name ?? NSNull()]
         endPickerSession()
@@ -320,10 +342,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleConnect(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr) else {
-            reject(r, "NotFoundError", "Unknown device")
-            return
-        }
+        guard let id = authorizedID(body, r) else { return }
         var p = peripherals[id]
         if p == nil {
             p = central.retrievePeripherals(withIdentifiers: [id]).first
@@ -340,24 +359,25 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
         let wasEmpty = (connectWaiters[id]?.isEmpty ?? true)
         connectWaiters[id, default: []].append(r)
         if wasEmpty {
+            attemptCounter += 1
+            let attempt = attemptCounter
+            connectAttempt[id] = attempt
             central.connect(peripheral)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
-            guard let self = self else { return }
-            guard let waiters = self.connectWaiters[id], !waiters.isEmpty else { return }
-            self.connectWaiters[id] = nil
-            self.central.cancelPeripheralConnection(peripheral)
-            for w in waiters {
-                self.reject(w, "NetworkError", "Connection timed out")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
+                guard let self = self, self.connectAttempt[id] == attempt else { return }
+                self.connectAttempt[id] = nil
+                guard let waiters = self.connectWaiters[id], !waiters.isEmpty else { return }
+                self.connectWaiters[id] = nil
+                self.central.cancelPeripheralConnection(peripheral)
+                for w in waiters {
+                    self.reject(w, "NetworkError", "Connection timed out")
+                }
             }
         }
     }
 
     private func handleDisconnect(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr) else {
-            reject(r, "NotFoundError", "Unknown device")
-            return
-        }
+        guard let id = authorizedID(body, r) else { return }
         if let p = peripherals[id] {
             central.cancelPeripheralConnection(p)
         }
@@ -365,8 +385,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleGetPrimaryServices(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id] else {
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id] else {
             reject(r, "NotFoundError", "Unknown device")
             return
         }
@@ -419,8 +439,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleGetCharacteristics(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id],
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id],
               let svcStr = body["service"] as? String else {
             reject(r, "NotFoundError", "Unknown device")
             return
@@ -495,8 +515,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleReadValue(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id],
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id],
               let svcStr = body["service"] as? String,
               let chrStr = body["characteristic"] as? String else {
             reject(r, "NotFoundError", "Unknown device")
@@ -515,8 +535,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleWriteValue(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id],
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id],
               let svcStr = body["service"] as? String,
               let chrStr = body["characteristic"] as? String,
               let valueStr = body["value"] as? String else {
@@ -555,8 +575,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleStartNotifications(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id],
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id],
               let svcStr = body["service"] as? String,
               let chrStr = body["characteristic"] as? String else {
             reject(r, "NotFoundError", "Unknown device")
@@ -575,8 +595,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleStopNotifications(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr),
-              let p = peripherals[id],
+        guard let id = authorizedID(body, r) else { return }
+        guard let p = peripherals[id],
               let svcStr = body["service"] as? String,
               let chrStr = body["characteristic"] as? String else {
             reject(r, "NotFoundError", "Unknown device")
@@ -595,10 +615,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleWatchAdvertisements(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr) else {
-            reject(r, "NotFoundError", "Unknown device")
-            return
-        }
+        guard let id = authorizedID(body, r) else { return }
         watched.insert(id)
         updateScan()
         resolve(r)
@@ -611,10 +628,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     }
 
     private func handleUnwatchAdvertisements(_ body: [String: Any], _ r: @escaping Reply) {
-        guard let idStr = body["deviceId"] as? String, let id = UUID(uuidString: idStr) else {
-            reject(r, "NotFoundError", "Unknown device")
-            return
-        }
+        guard let id = authorizedID(body, r) else { return }
         watched.remove(id)
         updateScan()
         resolve(r)
@@ -690,6 +704,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
         peripheral.delegate = self
         let id = peripheral.identifier
         servicesDiscovered.remove(id)
+        connectAttempt[id] = nil
         let waiters = connectWaiters[id] ?? []
         connectWaiters[id] = nil
         for w in waiters {
@@ -699,6 +714,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         let id = peripheral.identifier
+        connectAttempt[id] = nil
         let waiters = connectWaiters[id] ?? []
         connectWaiters[id] = nil
         for w in waiters {
@@ -733,6 +749,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
         serviceWaiters[id] = nil
         for w in svcWaiters { w(error ?? Self.bridgeError("Device disconnected")) }
         servicesDiscovered.remove(id)
+        connectAttempt[id] = nil
         let connWaiters = connectWaiters[id] ?? []
         connectWaiters[id] = nil
         for w in connWaiters { reject(w, "NetworkError", "Device disconnected") }
@@ -846,6 +863,7 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
             _ = id
         }
         connectWaiters = [:]
+        connectAttempt = [:]
 
         for (id, waiters) in serviceWaiters {
             for w in waiters { w(Self.bridgeError("Page reloaded")) }

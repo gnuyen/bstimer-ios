@@ -411,3 +411,43 @@ test('no document head: the shim carries on', () => {
 	env.win.dispatchEvent(new Event('DOMContentLoaded'));
 	assert.equal(typeof env.bt.requestDevice, 'function');
 });
+
+// Web Bluetooth rejects names that aren't UUIDs with a TypeError before anything reaches the
+// device; the shim does the same so malformed values never get to the native bridge.
+const BAD_UUIDS = ['heart_rate', 'fff', '0000fff0-0000-1000-8000-00805f9b34f', 'zzzz', '', '0000fff0-0000-1000-8000-00805f9b34fbX', '{0000fff0-0000-1000-8000-00805f9b34fb}'];
+
+test('malformed service UUIDs are refused with a TypeError and never sent to native', async () => {
+	const env = await connectedChar();
+	for (const bad of BAD_UUIDS) {
+		const before = env.calls.length;
+		await assert.rejects(env.server.getPrimaryService(bad), (e) => e.name === 'TypeError', `getPrimaryService(${JSON.stringify(bad)})`);
+		await assert.rejects(env.server.getPrimaryServices(bad), (e) => e.name === 'TypeError', `getPrimaryServices(${JSON.stringify(bad)})`);
+		assert.equal(env.calls.length, before, `nothing sent for ${JSON.stringify(bad)}`);
+	}
+});
+
+test('malformed characteristic UUIDs are refused with a TypeError and never sent to native', async () => {
+	const env = await connectedChar();
+	for (const bad of BAD_UUIDS) {
+		const before = env.calls.length;
+		await assert.rejects(env.service.getCharacteristic(bad), (e) => e.name === 'TypeError', `getCharacteristic(${JSON.stringify(bad)})`);
+		await assert.rejects(env.service.getCharacteristics(bad), (e) => e.name === 'TypeError', `getCharacteristics(${JSON.stringify(bad)})`);
+		assert.equal(env.calls.length, before, `nothing sent for ${JSON.stringify(bad)}`);
+	}
+});
+
+test('requestDevice with a malformed filter service is refused with a TypeError', async () => {
+	const { bt, calls } = load({ requestDevice: () => ({ deviceId: DEV, name: 'X' }) });
+	await assert.rejects(bt.requestDevice({ filters: [{ namePrefix: 'GAN' }, { services: ['not-a-uuid'] }] }), (e) => e.name === 'TypeError');
+	assert.equal(calls.length, 0);
+});
+
+test('every UUID form csTimer uses is still accepted', async () => {
+	const env = await connectedChar();
+	// full 128-bit (any case), 16-bit and 32-bit aliases, and numbers
+	for (const ok of ['0000FFF0-0000-1000-8000-00805F9B34FB', '6e400001-b5a3-f393-e0a9-e50e24dcca9e', 'fff0', 'FFF0', '0000fff0', 0xfff0]) {
+		await env.server.getPrimaryService(ok);
+	}
+	const sent = env.calls.filter((c) => c.op === 'getPrimaryServices').slice(-6).map((c) => c.service);
+	assert.deepEqual(sent, [SVC, '6e400001-b5a3-f393-e0a9-e50e24dcca9e', SVC, SVC, SVC, SVC]);
+});
