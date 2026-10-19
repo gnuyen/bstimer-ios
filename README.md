@@ -5,7 +5,7 @@ Bluetooth support iOS Safari lacks. `bluetooth-shim.js` provides `navigator.blue
 inside the page and forwards every call to CoreBluetooth (`BluetoothBridge.swift`).
 It loads `https://bstimer.manoagames.com`, which runs
 [bsTimer](https://github.com/gnuyen/bstimer), a lightly modified csTimer with iCloud
-sync (see *The website*), or optionally `https://cstimer.net` (see *Website choice*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
+sync (see *The website*). A build option adds `https://cstimer.net` (see *Website choice*). See [PROTOCOL.md](PROTOCOL.md) for the bridge contract.
 
 bsTimer is an unofficial wrapper. csTimer is written by
 [cs0x7f](https://github.com/cs0x7f/cstimer) and licensed under GPL-3.0; this repository
@@ -17,7 +17,12 @@ and lets it auto-lock normally when the timer is idle. Turning a smart cube's fa
 
 ## Website choice
 
-The iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: bsTimer
+The csTimer.net option is off in the App Store build until csTimer's author approves it: the
+app always shows bsTimer and has no Settings page. To build with it, follow the comment at
+`CSTIMER_NET_OPTION` in `project.yml` (three lines to change; `test/sitemode.test.js` checks
+they agree, and fails while the option is on so it isn't uploaded by mistake).
+
+With the option, the iOS Settings app (Settings > Apps > bsTimer) has a "Website" choice: bsTimer
 (default, `https://bstimer.manoagames.com`) or csTimer.net. The two sites keep separate
 solves on the device. Bluetooth and the screen lock work on both. iCloud sync is
 bsTimer only. Google sign-in does not work in the app on csTimer.net (its login
@@ -45,12 +50,12 @@ The bundle id is `org.gnuyen.bstimer`.
 | `CstimerApp/AppDelegate.swift` | App and scene delegates |
 | `CstimerApp/Assets.xcassets` | App icon |
 | `CstimerApp/CloudBridge.swift` | iCloud sync and Sign in with Apple for the page (`bsCloud`) |
-| `CstimerApp/SiteMode.swift` | The Settings choice between the bsTimer site and csTimer.net |
+| `CstimerApp/SiteMode.swift` | The Settings choice between the bsTimer site and csTimer.net (a build option, off) |
 | `scripts/mac-build.sh` | Builds on a remote Mac over SSH |
 | `scripts/make-icon.swift` | Renders the app icon |
 | `CstimerApp/Resources/PrivacyInfo.xcprivacy` | Privacy manifest (required-reason APIs, data collected) |
 | `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed). `CURRENT_PROJECT_VERSION` is the build number, shown as `r<n>` in the launch badge; raise it for every upload |
-| `test/*.test.js` | Node tests for the shim |
+| `test/*.test.js` | Node tests for the shim and the csTimer.net build option |
 
 ## The website
 

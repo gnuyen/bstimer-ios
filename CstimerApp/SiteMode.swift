@@ -1,6 +1,7 @@
 import Foundation
 
-/// Which csTimer the app shows, chosen in the iOS Settings app (Settings.bundle, key "site").
+/// Which csTimer the app shows, chosen in the iOS Settings app (Settings.bundle, key "site")
+/// when the app is built with the csTimer.net option.
 /// The two sites are different origins, so each keeps its own solves on the device.
 enum SiteMode: String {
     /// bstimer.manoagames.com: csTimer with bsTimer's additions, including iCloud sync.
@@ -11,8 +12,14 @@ enum SiteMode: String {
 
     static let defaultsKey = "site"
 
+    /// Without the CSTIMER_NET_OPTION build switch (see project.yml) the app always shows bsTimer,
+    /// whatever an earlier build saved in Settings.
     static var current: SiteMode {
-        SiteMode(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .bstimer
+        #if CSTIMER_NET_OPTION
+        return SiteMode(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .bstimer
+        #else
+        return .bstimer
+        #endif
     }
 
     var startURL: URL {

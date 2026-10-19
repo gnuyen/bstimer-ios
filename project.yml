@@ -14,6 +14,9 @@ targets:
           - "Resources/**"
       - path: CstimerApp/Resources
         buildPhase: resources
+        # The csTimer.net option (CSTIMER_NET_OPTION below): Settings.bundle holds its Website choice.
+        excludes:
+          - "Settings.bundle"
     entitlements:
       path: CstimerApp/bsTimer.entitlements
       properties:
@@ -38,8 +41,13 @@ targets:
         # iPhone only (it still runs on iPad, scaled); iPad support would need iPad screenshots.
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
+        # The csTimer.net option: a Website choice in the Settings app between bsTimer and
+        # cstimer.net. Off until cs0x7f approves it. To turn it on, uncomment this line, remove the
+        # Settings.bundle exclude above and uncomment cstimer.net in WKAppBoundDomains below;
+        # test/sitemode.test.js checks that the three agree.
+        # OTHER_SWIFT_FLAGS: "$(inherited) -D CSTIMER_NET_OPTION"
         # The build number; the app's revision badge (r23 …) shows the same number.
-        CURRENT_PROJECT_VERSION: "30"
+        CURRENT_PROJECT_VERSION: "31"
     info:
       path: CstimerApp/Info.plist
       properties:
@@ -54,8 +62,8 @@ targets:
         # The WCA hosts are listed so in-app sign-in keeps working if navigation is limited to these.
         WKAppBoundDomains:
           - bstimer.manoagames.com
-          - cstimer.net
-          - www.cstimer.net
+          # - cstimer.net        (the csTimer.net option)
+          # - www.cstimer.net
           - www.worldcubeassociation.org
           - worldcubeassociation.org
         UIApplicationSceneManifest:
