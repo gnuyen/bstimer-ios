@@ -400,6 +400,13 @@ test("the app hides csTimer's donate button and its advertisements setting", () 
 	assert.equal(styles[0].id, 'bstimer-app-hide');
 });
 
+test("the Bluetooth dialog shows only its first line, not csTimer's browser advice", () => {
+	// csTimer's .instruction block: "check that Bluetooth is enabled", then advice to use Chrome
+	// or Bluefy and change browser flags, which is wrong inside the app.
+	const css = withStyles().head.children[0].textContent.replace(/\s+/g, ' ');
+	assert.match(css, /\.instruction > :not\(:first-child\)[^{]*\{[^}]*display: none/);
+});
+
 test('the stylesheet is added only once', () => {
 	const { env, head } = withStyles();
 	env.win.dispatchEvent(new Event('DOMContentLoaded'));

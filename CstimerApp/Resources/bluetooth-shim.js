@@ -466,7 +466,8 @@
 	});
 
 	// App Store rules: hide csTimer's donate button (a link to outside payments, guideline
-	// 3.1.1) and its "Show advertisements" setting. Works on bsTimer and on cstimer.net alike.
+	// 3.1.1) and its "Show advertisements" setting, and the browser advice that doesn't apply in
+	// the app. Works on bsTimer and on cstimer.net alike.
 	window.addEventListener('DOMContentLoaded', function () {
 		try {
 			var document = window.document;
@@ -479,7 +480,9 @@
 			var style = document.createElement('style');
 			style.id = 'bstimer-app-hide';
 			style.textContent = '#leftbar > .c5 { display: none !important; }\n' +
-				'tr:has(> td > label > input[name="showad"]) { display: none !important; }';
+				'tr:has(> td > label > input[name="showad"]) { display: none !important; }\n' +
+				// the Bluetooth dialog's advice to use Chrome or Bluefy; keep "check Bluetooth is on"
+				'.instruction > :not(:first-child) { display: none !important; }';
 			document.head.appendChild(style);
 		} catch (err) {
 			console.error('cstimer BLE hide-donate error', err);
