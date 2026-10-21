@@ -47,7 +47,7 @@ targets:
         # test/sitemode.test.js checks that the three agree.
         # OTHER_SWIFT_FLAGS: "$(inherited) -D CSTIMER_NET_OPTION"
         # The build number; the app's revision badge (r23 …) shows the same number.
-        CURRENT_PROJECT_VERSION: "32"
+        CURRENT_PROJECT_VERSION: "33"
     info:
       path: CstimerApp/Info.plist
       properties:

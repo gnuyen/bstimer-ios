@@ -152,7 +152,7 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             } catch let ckError as CKError where ckError.code == .unknownItem {
                 resolve(r, NSNull())
             } catch {
-                reject(r, "iCloud: " + error.localizedDescription)
+                reject(r, "iCloud: " + CloudErrors.describe(error))
             }
         }
     }
@@ -231,7 +231,7 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
                         #endif
                         resolve(r, ["conflict": true])
                     } else {
-                        reject(r, "iCloud: " + error.localizedDescription)
+                        reject(r, "iCloud: " + CloudErrors.describe(error))
                     }
                 }
             } catch let ckError as CKError where ckError.code == .serverRecordChanged {
@@ -243,7 +243,7 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
                 #endif
                 resolve(r, ["conflict": true])
             } catch {
-                reject(r, "iCloud: " + error.localizedDescription)
+                reject(r, "iCloud: " + CloudErrors.describe(error))
             }
         }
     }
@@ -256,7 +256,7 @@ final class CloudBridge: NSObject, WKScriptMessageHandlerWithReply {
             } catch let ckError as CKError where ckError.code == .unknownItem {
                 // nothing stored
             } catch {
-                reject(r, "iCloud: " + error.localizedDescription)
+                reject(r, "iCloud: " + CloudErrors.describe(error))
                 return
             }
             lastRecord = nil
