@@ -407,6 +407,20 @@ test("the Bluetooth dialog shows only its first line, not csTimer's browser advi
 	assert.match(css, /\.instruction > :not\(:first-child\)[^{]*\{[^}]*display: none/);
 });
 
+test('the Bluetooth dialog shrinks to its few lines instead of the big share-dialog box', () => {
+	// csTimer shows it with the 'share' dialog class: a box from 20% to 80% of the screen.
+	const css = withStyles().head.children[0].textContent.replace(/\s+/g, ' ');
+	const rule = css.match(/\.dialogshare:has\(\.instruction\) \{([^}]*)\}/);
+	assert.ok(rule, 'a rule only for the share dialog holding the Bluetooth instructions');
+	assert.match(rule[1], /top: 50% !important/);
+	assert.match(rule[1], /bottom: auto !important/);
+	assert.match(rule[1], /height: [\d.]+em/);
+	assert.match(rule[1], /max-height: 90%/, 'still fits a landscape phone');
+	assert.match(rule[1], /transform: translateY\(-50%\)/, 'centred');
+	assert.doesNotMatch(css, /\.dialogshare \{/, 'the export share dialog keeps its size');
+	assert.match(css, /\.dialogshare:has\(\.instruction\) \.value br \{ display: none; \}/, "the timer dialog's blank lines go, so its text fits");
+});
+
 test('the stylesheet is added only once', () => {
 	const { env, head } = withStyles();
 	env.win.dispatchEvent(new Event('DOMContentLoaded'));
