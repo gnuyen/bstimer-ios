@@ -374,6 +374,23 @@
 		},
 	};
 
+	// csTimer alerts GIIKER_NOBLEMSG (use Chrome, chrome://flags) when Bluetooth is unavailable;
+	// the app explains the real problem itself (BluetoothBridge.explainUnavailable).
+	try {
+		if (typeof window.alert === 'function') {
+			var origAlert = window.alert;
+			window.alert = function () {
+				var msg = window.GIIKER_NOBLEMSG;
+				if (typeof arguments[0] === 'string' && typeof msg === 'string' && msg && arguments[0] === msg) {
+					return undefined;
+				}
+				return origAlert.apply(window, arguments);
+			};
+		}
+	} catch (err) {
+		console.error('cstimer BLE alert error', err);
+	}
+
 	Object.defineProperty(window.navigator, 'bluetooth', {
 		value: bluetooth,
 		configurable: true,

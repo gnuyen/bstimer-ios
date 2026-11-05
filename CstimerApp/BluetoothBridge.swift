@@ -11,7 +11,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
     private var centralCreated = false
     lazy var central: CBCentralManager = {
         centralCreated = true
-        return CBCentralManager(delegate: self, queue: .main)
+        // No iOS "Turn On Bluetooth" alert: explainUnavailable shows one with the actual problem.
+        return CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: false])
     }()
 
     weak var webView: WKWebView?
@@ -244,6 +245,9 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
                 guard let self = self else { return }
                 let waiters = self.availabilityWaiters
                 self.availabilityWaiters = []
+                if !waiters.isEmpty {
+                    self.explainUnavailable()
+                }
                 for w in waiters {
                     self.resolve(w, false)
                 }
@@ -273,7 +277,8 @@ final class BluetoothBridge: NSObject, WKScriptMessageHandlerWithReply, CBCentra
             title = "Bluetooth unavailable"
             message = "This device does not support Bluetooth Low Energy."
         default:
-            return
+            title = "Bluetooth isn't ready"
+            message = "Check that Bluetooth is on, then try again."
         }
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         if central.state == .unauthorized, let url = URL(string: UIApplication.openSettingsURLString) {

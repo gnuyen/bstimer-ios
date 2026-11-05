@@ -477,3 +477,49 @@ test('every UUID form csTimer uses is still accepted', async () => {
 	const sent = env.calls.filter((c) => c.op === 'getPrimaryServices').slice(-6).map((c) => c.service);
 	assert.deepEqual(sent, [SVC, '6e400001-b5a3-f393-e0a9-e50e24dcca9e', SVC, SVC, SVC, SVC]);
 });
+
+// csTimer alerts GIIKER_NOBLEMSG ("Bluetooth API is not available … try chrome with chrome://flags/…")
+// when getAvailability is false. The app explains the actual problem itself, so that alert is dropped.
+function withAlert() {
+	const shown = [];
+	const env = load({}, { alert: (...args) => { shown.push(args); } });
+	return Object.assign(env, { shown });
+}
+
+test("csTimer's 'Bluetooth API is not available' alert is dropped, in any language", () => {
+	const { win, shown } = withAlert();
+	// the language file loads after the shim
+	win.GIIKER_NOBLEMSG = 'Bluetooth-API ist nicht verfügbar … chrome://flags/#enable-experimental-web-platform-features';
+	win.alert(win.GIIKER_NOBLEMSG);
+	assert.deepEqual(shown, []);
+});
+
+test('other alerts still show, with their arguments', () => {
+	const { win, shown } = withAlert();
+	win.GIIKER_NOBLEMSG = 'Bluetooth API is not available';
+	win.alert('Bluetooth API is not available, really');
+	win.alert('Saved');
+	assert.deepEqual(shown, [['Bluetooth API is not available, really'], ['Saved']]);
+});
+
+test('before the language file defines the message, nothing is dropped', () => {
+	const { win, shown } = withAlert();
+	win.alert();
+	win.alert(undefined);
+	win.alert('hello');
+	assert.equal(shown.length, 3);
+});
+
+test('the native side always explains an unavailable Bluetooth, in one alert', () => {
+	const swift = fs.readFileSync(path.join(__dirname, '../CstimerApp/BluetoothBridge.swift'), 'utf8');
+	assert.match(swift, /CBCentralManager\(delegate: self, queue: \.main, options: \[CBCentralManagerOptionShowPowerAlertKey: false\]\)/,
+		"iOS's own 'Turn On Bluetooth' alert is off, so ours is the only one");
+	const avail = swift.match(/private func handleGetAvailability[\s\S]*?\n    \}\n/)[0];
+	const timeout = avail.match(/asyncAfter[\s\S]*?\n            \}/)[0];
+	assert.match(timeout, /explainUnavailable\(\)/, 'also when the state never settles');
+	const explain = swift.match(/private func explainUnavailable[\s\S]*?\n    \}\n/)[0];
+	const dflt = explain.match(/default:([\s\S]*?)\n        \}/)[1];
+	assert.doesNotMatch(dflt, /return/, 'no state goes unexplained');
+	assert.match(dflt, /title = "[^"]+"/);
+	assert.match(dflt, /message = "[^"]+"/);
+});
