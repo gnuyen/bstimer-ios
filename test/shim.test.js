@@ -400,11 +400,16 @@ test("the app hides csTimer's donate button and its advertisements setting", () 
 	assert.equal(styles[0].id, 'bstimer-app-hide');
 });
 
-test("the Bluetooth dialog shows only its first line, not csTimer's browser advice", () => {
+test("the Bluetooth dialog hides csTimer's instructions, since the app explains Bluetooth problems itself", () => {
 	// csTimer's .instruction block: "check that Bluetooth is enabled", then advice to use Chrome
-	// or Bluefy and change browser flags, which is wrong inside the app.
+	// or Bluefy and change browser flags, which is wrong inside the app. When Bluetooth is off or
+	// not allowed, BluetoothBridge.explainUnavailable says so (with Open Settings) after OK.
 	const css = withStyles().head.children[0].textContent.replace(/\s+/g, ' ');
-	assert.match(css, /\.instruction > :not\(:first-child\)[^{]*\{[^}]*display: none/);
+	assert.match(css, /\.instruction \{ display: none !important; \}/);
+	assert.doesNotMatch(css, /:not\(:first-child\)/, 'no rule that keeps the first line');
+	const swift = fs.readFileSync(path.join(__dirname, '../CstimerApp/BluetoothBridge.swift'), 'utf8');
+	assert.match(swift, /case \.poweredOff:[\s\S]*?"Bluetooth is off"/, 'the app says when Bluetooth is off');
+	assert.match(swift, /case \.unauthorized:[\s\S]*?"Bluetooth access is off"/, 'and when access is denied');
 });
 
 test('the Bluetooth dialog shrinks to its few lines instead of the big share-dialog box', () => {

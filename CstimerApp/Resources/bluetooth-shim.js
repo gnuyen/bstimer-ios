@@ -481,12 +481,12 @@
 			style.id = 'bstimer-app-hide';
 			style.textContent = '#leftbar > .c5 { display: none !important; }\n' +
 				'tr:has(> td > label > input[name="showad"]) { display: none !important; }\n' +
-				// the Bluetooth dialog's advice to use Chrome or Bluefy; keep "check Bluetooth is on"
-				'.instruction > :not(:first-child) { display: none !important; }\n' +
+				// the Bluetooth dialog's advice to use Chrome or Bluefy, and to check Bluetooth is on:
+				// when it isn't, the app says so itself (BluetoothBridge.explainUnavailable)
+				'.instruction { display: none !important; }\n' +
 				// with the advice gone, the dialog only needs a few lines, not the share dialog's box
-				'.dialogshare:has(.instruction) { top: 50% !important; bottom: auto !important; height: 12.5em; '
+				'.dialogshare:has(.instruction) { top: 50% !important; bottom: auto !important; height: 9em; '
 					+ 'max-height: 90%; transform: translateY(-50%); }\n' +
-				'.dialogshare .instruction { margin: 1em 2em; }\n' +
 				// the Bluetooth timer dialog pads its text with blank lines (<br><br>)
 				'.dialogshare:has(.instruction) .value br { display: none; }';
 			document.head.appendChild(style);
