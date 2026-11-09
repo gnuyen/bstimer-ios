@@ -1,7 +1,7 @@
 # JS ⇄ native Bluetooth bridge protocol
 
-The app injects `bluetooth-shim.js` into `https://bstimer.manoagames.com` at document
-start. The shim implements the subset of Web Bluetooth that cstimer uses and
+The app injects `bluetooth-shim.js` into the page at document start. The shim
+implements the subset of Web Bluetooth that csTimer uses and
 forwards every call to Swift (`BluetoothBridge`).
 
 ## Conventions
@@ -64,8 +64,8 @@ Every `DataView` the shim hands to the page must sit at byte offset 0 of its own
 
 ## iCloud bridge (bsCloud)
 
-The app registers a second handler, `bsCloud`, only in bsTimer mode. It answers
-only main-frame `https` pages on the bsTimer host.
+The app registers a second handler, `bsCloud`, only for the bsTimer site. It answers
+only main-frame `https` pages on that site's host (`SiteMode.hosts`).
 `window.webkit.messageHandlers.bsCloud.postMessage(msg)` returns a Promise (native
 side is a `WKScriptMessageHandlerWithReply`).
 
